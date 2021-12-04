@@ -34,7 +34,6 @@ list_all_versions() {
 }
 
 get_platform() {
-
   local platform=$(uname | tr '[:upper:]' '[:lower:]')
 
   if [[ $platform != "linux" && $platform != "darwin" ]]; then
@@ -46,24 +45,12 @@ get_platform() {
 
 get_system_architecture() {
   local architecture=$(uname -m)
-  
+
   case $architecture in
-    
-  x86_64) 
-    architecture="amd64" 
-    ;;
-  
-  # In case of future arm support
-  # aarch64) 
-  #   architecture="arm64" 
-  #   ;;
-
-  *)
-    fail "$TOOL_NAME supports only amd64 architecture"
-    ;;
-
+  x86_64) architecture="amd64" ;;
+  *) fail "$TOOL_NAME supports only amd64 architecture" ;;
   esac
-  
+
   echo "$architecture"
 }
 
@@ -79,7 +66,6 @@ download_release() {
   echo "* Downloading $TOOL_NAME release $version..."
   curl "${curl_opts[@]}" -o "$filename" -C - "$url" || fail "Could not download $url"
 }
-
 
 install_version() {
   local install_type="$1"
