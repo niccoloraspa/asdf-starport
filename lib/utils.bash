@@ -2,7 +2,6 @@
 
 set -euo pipefail
 
-# TODO: Ensure this is the correct GitHub homepage where releases can be downloaded for starport.
 GH_REPO="https://github.com/tendermint/starport"
 TOOL_NAME="starport"
 TOOL_TEST="starport --help"
@@ -14,7 +13,6 @@ fail() {
 
 curl_opts=(-fsSL)
 
-# NOTE: You might want to remove this if starport is not hosted on GitHub releases.
 if [ -n "${GITHUB_API_TOKEN:-}" ]; then
   curl_opts=("${curl_opts[@]}" -H "Authorization: token $GITHUB_API_TOKEN")
 fi
@@ -31,27 +29,62 @@ list_github_tags() {
 }
 
 list_all_versions() {
-  # TODO: Adapt this. By default we simply list the tag names from GitHub releases.
   # Change this function if starport has other means of determining installable versions.
   list_github_tags
 }
 
+get_platform() {
+
+  local platform=$(uname | tr '[:upper:]' '[:lower:]')
+
+  if [[ $platform != "linux" && $platform != "darwin" ]]; then
+    fail "$TOOL_NAME supports only darwin or linux"
+  fi
+
+  echo "$platform"
+}
+
+get_system_architecture() {
+  local architecture=$(uname -m)
+  
+  case $architecture in
+    
+  x86_64) 
+    architecture="amd64" 
+    ;;
+  
+  # In case of future arm support
+  # aarch64) 
+  #   architecture="arm64" 
+  #   ;;
+
+  *)
+    fail "$TOOL_NAME supports only amd64 architecture"
+    ;;
+
+  esac
+  
+  echo "$architecture"
+}
+
 download_release() {
-  local version filename url
+  local version platform architecture filename url
   version="$1"
   filename="$2"
+  platform="$(get_platform)"
+  architecture="$(get_system_architecture)"
 
-  # TODO: Adapt the release URL convention for starport
-  url="$GH_REPO/archive/v${version}.tar.gz"
+  url="$GH_REPO/releases/download/v${version}/${TOOL_NAME}_${version}_${platform}_${architecture}.tar.gz"
 
   echo "* Downloading $TOOL_NAME release $version..."
   curl "${curl_opts[@]}" -o "$filename" -C - "$url" || fail "Could not download $url"
 }
 
+
 install_version() {
   local install_type="$1"
   local version="$2"
-  local install_path="$3"
+  local install_path="$3/bin"
 
   if [ "$install_type" != "version" ]; then
     fail "asdf-$TOOL_NAME supports release installs only"
@@ -61,10 +94,9 @@ install_version() {
     mkdir -p "$install_path"
     cp -r "$ASDF_DOWNLOAD_PATH"/* "$install_path"
 
-    # TODO: Asert starport executable exists.
     local tool_cmd
     tool_cmd="$(echo "$TOOL_TEST" | cut -d' ' -f1)"
-    test -x "$install_path/bin/$tool_cmd" || fail "Expected $install_path/bin/$tool_cmd to be executable."
+    test -x "$install_path/$tool_cmd" || fail "Expected $install_path/$tool_cmd to be executable."
 
     echo "$TOOL_NAME $version installation was successful!"
   ) || (
